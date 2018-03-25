@@ -14,7 +14,6 @@ import urllib.request
 from itertools import count
 
 # Calendar stuff
-from icalendar import Calendar, Event
 from datetime import datetime, timedelta
 import pytz
 import logging
