@@ -26,7 +26,7 @@ logging.basicConfig(
     format='%(asctime)s %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S %p'
 )
-log = logging.getLogger('scrape_calendar')
+
 logging.getLogger("googleapiclient.discovery_cache").propagate = False
 
 log = logging.getLogger('scrape_and_push_calendar')
