@@ -21,7 +21,7 @@ import logging
 
 # Set up logging
 logging.basicConfig(
-    filename='log_file',
+    filename=ls.log_file,
     level=logging.DEBUG,
     filemode="r+",
     format='%(asctime)s %(message)s',
