@@ -2,3 +2,4 @@ httplib2==0.11.0
 oauth2client==4.1.2
 urllib3==1.22
 pytz==2017.2
+google-api-python-client==1.6.5
