@@ -40,7 +40,7 @@ APPLICATION_NAME = 'CGSA Calender'
 
 # Set localsettings
 tzinfo=pytz.timezone('America/Chicago')
-calendarId = 'h81tt9cbe52tkda44ul90hsal0@group.calendar.google.com'
+calendarId = ls.calendarId
 
 # Mini function to remove unnecessary white space
 collapse = lambda s: " ".join(s.split()) or (lambda s: s)
