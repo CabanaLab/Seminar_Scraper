@@ -28,7 +28,7 @@ logging.basicConfig(
 )
 
 logging.getLogger("googleapiclient.discovery_cache").propagate = False
-logging.getLogger("googleapiclient.discovery_cache").setLevel(logging.CRITICAL)
+logging.getLogger("googleapiclient").setLevel(logging.CRITICAL)
 
 log = logging.getLogger('scrape_and_push_calendar')
 formatter = logging.Formatter('%(name)s - %(asctime)s | %(message)s')
