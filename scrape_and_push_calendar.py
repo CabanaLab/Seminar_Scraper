@@ -22,19 +22,23 @@ import logging
 logging.basicConfig(
     filename=ls.log_file,
     level=logging.DEBUG,
-    filemode="r+",
-    format='%(asctime)s %(message)s',
+    filemode="a",
+    format='%(asctime)s │ %(message)s',
     datefmt='%m/%d/%Y %I:%M:%S %p'
 )
 
 logging.getLogger("googleapiclient.discovery_cache").propagate = False
+logging.getLogger("googleapiclient.discovery_cache").setLevel(logging.CRITICAL)
 
 log = logging.getLogger('scrape_and_push_calendar')
 formatter = logging.Formatter('%(name)s - %(asctime)s | %(message)s')
 
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
-SCOPES = 'https://www.googleapis.com/auth/calendar'
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/urlshortener'
+]
 CLIENT_SECRET_FILE = ls.client_secret_file
 APPLICATION_NAME = 'CGSA Calender'
 
@@ -166,6 +170,20 @@ def bring_me_soup(link):
     soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'))
     return soup.find(lambda tag: tag.name == 'article' and tag.get('class') == ["post-type-event"])
 
+def short(url, http=False):
+    """Shorten the URL using Google API"""
+    if http == False:
+        credentials = get_credentials()
+        http = credentials.authorize(httplib2.Http())
+    shortener = discovery.build('urlshortener', 'v1', http=http).url()
+    
+    # Create request
+    body = {
+        'longUrl': url
+    }
+    
+    return shortener.insert(body=body).execute()['id']
+
 def main():
     # Log in to the Google Calendar API
     credentials = get_credentials()
@@ -194,6 +212,8 @@ def main():
         info['url'] = link
         info['host'] = get_host(html_event)
 
+        log.debug("Title: %s", info['title'])
+
         # Put start and end dates in correct datetime format
         _dtstart, _dtend, _dtcreated, _dtmodified = datetimeify(
             info['date'],
@@ -204,13 +224,12 @@ def main():
 
         # Check for time entry errors
         _dtstart, _dtend = fix_broken_times(_dtstart, _dtend)
-        
-        log.debug("Title: %s", info['title'])
+                
         # Pack the event
         event = {
             'summary': info['title'],
             'location': info['location'],
-            'description': info['description'] + '\n\nHost: ' + info['host'],
+            'description': info['description'] + '\n\nHost: ' + info['host'] + '\n\n' + short(info['url'], http=http),
             'source': {
                 'url': info['url'],
                 'title': "This event was automatically created from chem.uic.edu/seminars",
@@ -232,7 +251,7 @@ def main():
 
         log.debug("Event Packed")
         imported_event = service.events().import_(calendarId=calendarId, body=event).execute()
-        log.debug("Exported to %s", imported_event['htmlLink'])
+        log.debug("Exported to %s", short(imported_event['htmlLink'], http=http))
         
 if __name__ == "__main__":
     main()

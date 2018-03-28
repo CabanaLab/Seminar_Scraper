@@ -3,3 +3,6 @@ localsettings.py
 #*
 .#*
 client_secret.json
+changes
+log_file
+__pycache__
