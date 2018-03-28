@@ -145,14 +145,19 @@ def fix_broken_times(_dtstart, _dtend):
     # Does the event end before it starts?
     if _dtstart > _dtend:
         # Too early/late for working hours?
+        log.debug('Event ends before it starts. Fixing...')
         if _dtstart.hour < 7:
             _dtstart += timedelta(hours=12)
+            log.debug('Event starts too early. Switching AM --> PM')
         elif _dtstart.hour > 19:
             _dtstart -= timedelta(hours=12)
+            log.debug('Event starts too late. Switching PM --> AM')
         if _dtend.hour < 7:
             _dtend += timedelta(hours=12)
+            log.debug('Event ends too early. Switching AM --> PM')
         elif _dtend.hour > 19:
             _dtstart -= timedelta(hours=12)
+            log.debug('Event ends too late. Switching PM --> AM')
     return _dtstart, _dtend
 
 def bring_me_soup(link):
