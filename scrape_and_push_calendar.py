@@ -12,6 +12,9 @@ from oauth2client.file import Storage
 from bs4 import BeautifulSoup, SoupStrainer
 import urllib.request
 from itertools import count
+from urllib.parse import urlencode, urlparse, parse_qs
+from lxml.html import fromstring
+from requests import get
 
 # Calendar stuff
 from datetime import datetime, timedelta
@@ -87,11 +90,11 @@ def get_seminar_links():
     while True:
         resp = urllib.request.urlopen("http://chem.uic.edu/seminars/" + str(next(n)))
         soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'))
-        
+
         for para in soup.find_all('p'):
             if 'Sorry, there are no future events' in para.get_text():
                 return links_list
-            
+
         for link in soup.find_all('a', href=True):
             if 'http://chem.uic.edu/events/' in link['href']:
                 log.debug('Event Found! %s', link['href'])
@@ -170,18 +173,69 @@ def bring_me_soup(link):
     soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'))
     return soup.find(lambda tag: tag.name == 'article' and tag.get('class') == ["post-type-event"])
 
+
+
+
+
+def URL(title,http=False):
+    if title[0:12] == 'Seminar with' or title[0:12] == 'seminar with':
+        string=title[13:len(title)]     
+    if title[0:12] != 'Seminar with' and title[0:12] != 'seminar with' and title.find('Prof')!=-1:
+        string=title[title.find('Prof'):len(title)]
+    if title[0:12] != 'Seminar with' and title[0:12] != 'seminar with' and title.find('Prof')==-1:
+        string=False
+
+    #log.debug('URL string: %s', string)
+	
+    try:
+        newstring=string.replace(" ", "+")
+        raw = get("https://www.google.com/search?q="+newstring).text
+        page = fromstring(raw)
+
+
+
+        results=[]
+        for result in page.cssselect(".r a"):
+            url = result.get("href")
+
+            if url.startswith("/url?"):
+                url = parse_qs(urlparse(url).query)['q']
+            results.append(url[0])
+
+        first=results[0].find('/')
+        second=results[0].find('.com')
+
+        if first >1 and second<0:
+            output=short(results[0],http=http)
+        else:
+
+            if first <1 or second>0:
+                first=results[1].find('/')
+                second=results[1].find('.com')
+                if first >1 and second<0:
+                    output=short(results[1],http=http)
+                    log.debug('Link found: %s', output)
+            else:
+                output='Link Not Avaliable'
+    except:
+        output='Link Not Avaliable'
+    return output
+
+
+
+
 def short(url, http=False):
     """Shorten the URL using Google API"""
     if http == False:
         credentials = get_credentials()
         http = credentials.authorize(httplib2.Http())
     shortener = discovery.build('urlshortener', 'v1', http=http).url()
-    
+
     # Create request
     body = {
         'longUrl': url
     }
-    
+
     return shortener.insert(body=body).execute()['id']
 
 def main():
@@ -190,7 +244,7 @@ def main():
     http = credentials.authorize(httplib2.Http())
     service = discovery.build('calendar','v3',http=http)
     log.debug("Received credentials from Google API")
-    
+
     links_list= get_seminar_links()
 
     for link in links_list:
@@ -212,7 +266,9 @@ def main():
         info['url'] = link
         info['host'] = get_host(html_event)
 
-        log.debug("Title: %s", info['title'])
+        #log.debug("Title: %s", info['title'])
+
+        #log.debug("Will URL: %s", URL(info['title']))
 
         # Put start and end dates in correct datetime format
         _dtstart, _dtend, _dtcreated, _dtmodified = datetimeify(
@@ -224,12 +280,12 @@ def main():
 
         # Check for time entry errors
         _dtstart, _dtend = fix_broken_times(_dtstart, _dtend)
-                
+
         # Pack the event
         event = {
             'summary': info['title'],
             'location': info['location'],
-            'description': info['description'] + '\n\nHost: ' + info['host'] + '\n\n' + short(info['url'], http=http),
+            'description': info['description'] + '\n\nHost: ' + info['host'] + '\n\n' + URL(info['title'], http=http),
             'source': {
                 'url': info['url'],
                 'title': "This event was automatically created from chem.uic.edu/seminars",
@@ -252,6 +308,6 @@ def main():
         log.debug("Event Packed")
         imported_event = service.events().import_(calendarId=calendarId, body=event).execute()
         log.debug("Exported to %s", short(imported_event['htmlLink'], http=http))
-        
+
 if __name__ == "__main__":
     main()
