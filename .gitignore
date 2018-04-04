@@ -6,3 +6,4 @@ client_secret.json
 changes
 log_file
 __pycache__
+*.pyc
