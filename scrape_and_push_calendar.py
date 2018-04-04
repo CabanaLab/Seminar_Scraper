@@ -30,8 +30,10 @@ logging.basicConfig(
     datefmt='%m/%d/%Y %I:%M:%S %p'
 )
 
+# Quiet loggers from imported packages
 logging.getLogger("googleapiclient.discovery_cache").propagate = False
 logging.getLogger("googleapiclient").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 log = logging.getLogger('scrape_and_push_calendar')
 formatter = logging.Formatter('%(name)s - %(asctime)s | %(message)s')
@@ -173,11 +175,9 @@ def bring_me_soup(link):
     soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'))
     return soup.find(lambda tag: tag.name == 'article' and tag.get('class') == ["post-type-event"])
 
-
-
-
-
 def URL(title,http=False):
+    """Searches Google for visiting Prof. Returns string of URL of appropriate search result"""
+    # Appropriately format the incoming string
     if title[0:12] == 'Seminar with' or title[0:12] == 'seminar with':
         string=title[13:len(title)]     
     if title[0:12] != 'Seminar with' and title[0:12] != 'seminar with' and title.find('Prof')!=-1:
@@ -185,30 +185,34 @@ def URL(title,http=False):
     if title[0:12] != 'Seminar with' and title[0:12] != 'seminar with' and title.find('Prof')==-1:
         string=False
 
-    #log.debug('URL string: %s', string)
-	
-    try:
+    log.debug('Google search string: %s', string)
+
+    # Initialize an empty results list 
+    results=[]
+    if string:
+        # Format the string for searching
         newstring=string.replace(" ", "+")
+        log.debug('Searching... %s', newstring)
+        # GET the search results page
         raw = get("https://www.google.com/search?q="+newstring).text
         page = fromstring(raw)
 
-
-
-        results=[]
+        # Find all links in the page and append to results list
         for result in page.cssselect(".r a"):
             url = result.get("href")
-
             if url.startswith("/url?"):
                 url = parse_qs(urlparse(url).query)['q']
-            results.append(url[0])
+                results.append(url[0])
 
+    # If results list isn't empty
+    if results:
         first=results[0].find('/')
         second=results[0].find('.com')
 
         if first >1 and second<0:
             output=short(results[0],http=http)
+            log.debug('Link found: %s', output)
         else:
-
             if first <1 or second>0:
                 first=results[1].find('/')
                 second=results[1].find('.com')
@@ -217,12 +221,15 @@ def URL(title,http=False):
                     log.debug('Link found: %s', output)
             else:
                 output='Link Not Avaliable'
-    except:
+                log.debug('No reliable results found from string: %s', string)
+
+    elif string == False:
         output='Link Not Avaliable'
+        log.debug('False string not searched')
+    else:
+        output='Link Not Avaliable'
+        log.debug('No results found from string: %s', string)
     return output
-
-
-
 
 def short(url, http=False):
     """Shorten the URL using Google API"""
@@ -245,8 +252,10 @@ def main():
     service = discovery.build('calendar','v3',http=http)
     log.debug("Received credentials from Google API")
 
+    log.debug("Searching for seminar events...")
     links_list= get_seminar_links()
 
+    log.debug("Found %s events. Scraping...", str(len(links_list)))
     for link in links_list:
 
         # Start a blank dict
@@ -266,9 +275,7 @@ def main():
         info['url'] = link
         info['host'] = get_host(html_event)
 
-        #log.debug("Title: %s", info['title'])
-
-        #log.debug("Will URL: %s", URL(info['title']))
+        log.debug("Title: %s", info['title'])
 
         # Put start and end dates in correct datetime format
         _dtstart, _dtend, _dtcreated, _dtmodified = datetimeify(
