@@ -8,7 +8,7 @@ sys.path.append(".")
 import scrape_and_push_calendar as ss
 
 class test_metadata(unittest.TestCase):
-    """Test for get_title()"""
+    """Test for metadata related functions"""
 
     exp_result = {
         'title': '',
@@ -48,4 +48,8 @@ class test_metadata(unittest.TestCase):
 
     def test_get_host(self):
         self.assertEqual(self.exp_result['host'], '')
-    
+
+# class test_logic(unittest.TestCase):
+#     """Test for logic based functions"""
+
+#     def test_fix_broken_times(self):
