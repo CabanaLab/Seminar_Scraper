@@ -232,14 +232,14 @@ def URL(title,http=False):
                     output=short(results[1],http=http)
                     log.debug('Link found: %s', output)
             else:
-                output='Link Not Avaliable'
+                output='Link Not Available'
                 log.debug('No reliable results found from string: %s', string)
 
     elif string == False:
-        output='Link Not Avaliable'
+        output='Link Not Available'
         log.debug('False string not searched')
     else:
-        output='Link Not Avaliable'
+        output='Link Not Available'
         log.debug('No results found from string: %s', string)
     return output
 
