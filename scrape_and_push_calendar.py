@@ -90,7 +90,7 @@ def get_seminar_links():
     n = count(1)
     links_list = []
     while True:
-        resp = urllib.request.urlopen("http://chem.uic.edu/seminars/" + str(next(n)))
+        resp = urllib.request.urlopen("https://chem.uic.edu/seminars/" + str(next(n)))
         soup = BeautifulSoup(resp, from_encoding=resp.info().get_param('charset'))
 
         for para in soup.find_all('p'):
@@ -98,7 +98,7 @@ def get_seminar_links():
                 return links_list
 
         for link in soup.find_all('a', href=True):
-            if 'http://chem.uic.edu/events/' in link['href']:
+            if 'https://chem.uic.edu/events/' in link['href']:
                 log.debug('Event Found! %s', link['href'])
                 links_list.append(link['href'])
 
@@ -116,18 +116,30 @@ def get_time(source):
 
 def get_location(source):
     """Returns event location"""
-    _location = source.find(string='Location').find_parent().find_next_sibling().get_text()
-    _address = source.find(string='Address').find_parent().find_next_sibling().get_text()
-    return collapse(_location + ',' + _address)
-
+    try:
+        _location = source.find(string='Location').find_parent().find_next_sibling().get_text()
+        _address = source.find(string='Address').find_parent().find_next_sibling().get_text()
+        return collapse(_location + ',' + _address)
+    except AttributeError:
+        log.debug('get_location failed, not listed on event')
+        return 'Not Provided'    
+    
 def get_host(source):
     """Returns seminar host"""
-    return collapse(source.find(string='Contact').find_parent().find_next_sibling().get_text())
-
+    try:
+        return collapse(source.find(string='Contact').find_parent().find_next_sibling().get_text())
+    except AttributeError:
+        log.debug('get_host failed, not listed on event')
+        return 'Not Provided'    
+    
 def get_description(source):
     """Returns seminar description """
-    return collapse(source.find('div', "_details u-definition-list--table").find_next_sibling().p.get_text())
-
+    try:
+        return collapse(source.find('div', "_details u-definition-list--table").find_next_sibling().p.get_text())
+    except AttributeError:
+        log.debug('get_description failed, not listed on event')
+        return 'Not Provided'    
+    
 def get_created(source):
     """Returns event creation date"""
     return collapse(source.find(string='Date posted').find_parent().find_next_sibling().get_text())
@@ -292,7 +304,7 @@ def main():
         event = {
             'summary': info['title'],
             'location': info['location'],
-            'description': info['description'] + '\n\nHost: ' + info['host'] + '\n\n' + URL(info['title'], http=http),
+            'description': info['description'] + '\n\nHost: ' + info['host'] + '\n\n',# + URL(info['title'], http=http),
             'source': {
                 'url': info['url'],
                 'title': "This event was automatically created from chem.uic.edu/seminars",
@@ -314,7 +326,7 @@ def main():
 
         log.debug("Event Packed")
         imported_event = service.events().import_(calendarId=calendarId, body=event).execute()
-        log.debug("Exported to %s", short(imported_event['htmlLink'], http=http))
+        # log.debug("Exported to %s", short(imported_event['htmlLink'], http=http))
 
 if __name__ == "__main__":
     main()
