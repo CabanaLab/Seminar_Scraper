@@ -3,10 +3,10 @@ import localsettings as ls
 
 # Google API stuff
 import httplib2
-from apiclient import discovery
-from oauth2client import client
-from oauth2client import tools
-from oauth2client.file import Storage
+import pickle
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 # Web Parser stuff
 from bs4 import BeautifulSoup, SoupStrainer
@@ -42,9 +42,8 @@ formatter = logging.Formatter('%(name)s - %(asctime)s | %(message)s')
 # at ~/.credentials/calendar-python-quickstart.json
 SCOPES = [
     'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/urlshortener'
 ]
-CLIENT_SECRET_FILE = ls.client_secret_file
+AUTH_TOKEN = ls.token_file
 APPLICATION_NAME = 'CGSA Calender'
 
 # Set localsettings
@@ -56,33 +55,16 @@ collapse = lambda s: " ".join(s.split()) or (lambda s: s)
 
 def get_credentials():
     """
-    Gets valid user credentials from storage.
-    If nothing has been stored, or if the stored credentials are invalid,
-    the OAuth2 flow is completed to obtain the new credentials.
-
-    Returns:
-        Credentials, the obtained credential.
+    Provides authorization to access Google API that is stored in AUTH_TOKEN described in localsettings.py
+    Input: None
+    Returns: credentials
     """
-    home_dir = os.path.expanduser('~')
-    credential_dir = os.path.join(home_dir, '.credentials')
-    if not os.path.exists(credential_dir):
-        os.makedirs(credential_dir)
-    credential_path = os.path.join(
-        credential_dir,
-        'calendar-quickstart.json'
-    )
-
-    store = Storage(credential_path)
-    credentials = store.get()
-    if not credentials or credentials.invalid:
-        flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
-        flow.user_agent = APPLICATION_NAME
-        if flags:
-            credentials = tools.run_flow(flow, store, flags)
-        else: # Needed only for compatibility with Python 2.6
-            credentials = tools.run(flow, store)
-        print('Storing credentials to ' + credential_path)
-    return credentials
+    creds = None
+    if os.path.exists(AUTH_TOKEN):
+        with open(AUTH_TOKEN, 'rb') as token:
+            creds = pickle.load(token)
+    log.debug('Credentials unpickled')        
+    return creds
 
 def get_seminar_links():
     """Search through URLs and provide a list of URLs that contain
@@ -148,7 +130,7 @@ def get_modified(source):
     """Returns date event was last modified"""
     return collapse(source.find(string='Date updated').find_parent().find_next_sibling().get_text())
 
-def datetimeify(date, time, created, modified, tzinfo=pytz.timezone('America/Chicago')):
+def datetimeify(date, time, created, modified, tzinfo=tzinfo):
     """Turn string dates into datetime objects"""
     _dstart = str(date + ' ' + time).split('-')[0].rstrip()
     _dend = date + str(time.split('-')[1].rstrip())
@@ -260,8 +242,7 @@ def short(url, http=False):
 def main():
     # Log in to the Google Calendar API
     credentials = get_credentials()
-    http = credentials.authorize(httplib2.Http())
-    service = discovery.build('calendar','v3',http=http)
+    service = build('calendar', 'v3', credentials=credentials)
     log.debug("Received credentials from Google API")
 
     log.debug("Searching for seminar events...")
@@ -304,7 +285,7 @@ def main():
         event = {
             'summary': info['title'],
             'location': info['location'],
-            'description': info['description'] + '\n\nHost: ' + info['host'] + '\n\n',# + URL(info['title'], http=http),
+            'description': info['description'] + '\n\nHost: ' + info['host'] + '\n',# + URL(info['title'], http=http),
             'source': {
                 'url': info['url'],
                 'title': "This event was automatically created from chem.uic.edu/seminars",

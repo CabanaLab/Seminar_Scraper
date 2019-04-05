@@ -1,9 +1,10 @@
-httplib2==0.11.0
-oauth2client==4.1.2
-urllib3==1.22
-pytz==2017.2
-google-api-python-client==1.6.5
 beautifulsoup4==4.6.0
-lxml==4.1.0
-requests==2.18.4
 cssselect==1.0.3
+google-api-python-client==1.7.8
+google-auth-httplib2==0.0.3
+google-auth-oauthlib==0.3.0
+httplib2==0.12.1
+lxml==4.1.0
+pytz==2018.5
+requests==2.21.0
+urllib3==1.24.1
